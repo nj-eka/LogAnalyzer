@@ -1,0 +1,35 @@
+version: 1
+disable_existing_loggers: true
+formatters:
+  console:
+    format: "[%(asctime)s] %(name)s %(levelname).1s %(message)s"
+    datefmt: "%Y.%m.%d %H:%M:%S"
+  file:
+    format: "[%(asctime)s] %(name)s (%(filename)s).%(funcName)s(%(lineno)d) %(levelname).1s %(message)s"
+    datefmt: "%Y.%m.%d %H:%M:%S"
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: INFO
+    formatter: console
+    stream: ext://sys.stdout
+  file:
+    class: logging.FileHandler
+    level: DEBUG
+    formatter: file    
+    filename: log_analyzer.log
+    encoding: utf8
+    mode: w  
+loggers:
+  __main__:
+    level: DEBUG
+    handlers: [console, file]
+    propagate: no
+  log_analyzer:
+    level: DEBUG
+    handlers: [file]
+    propagate: yes
+root:
+  level: NOTSET
+  handlers: [console]
+  propagate: no  
