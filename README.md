@@ -1,7 +1,7 @@
 # <b>log anylyzer</b>
 <i>otus python pro courses: lesson 1</i>
-
-this python script finds actual nginx's log, parses it and collects time / frequency statistics of requests per url and writes out report according to specified template.
+## Description:
+this python script helps to find long-responding urls from actual log.
 
 ## Usage: 
 ```
