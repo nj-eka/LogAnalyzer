@@ -24,8 +24,6 @@ import re
 import copy
 import gzip
 import bz2
-import shutil
-import fnmatch
 from datetime import datetime
 from pathlib import Path
 import collections as cs
@@ -61,7 +59,7 @@ class App:
     >>> 1 if logs_dir.exists() and os.access(logs_dir, os.F_OK) else 0
     1
     """
-
+    REQUIRED_PYTHON_VER = (3, 9)
     ENCONDING = "utf-8"
     ROUND_NDIGITS = 4
 
@@ -179,7 +177,9 @@ class App:
         >>> dict(sorted(dict((k, dict(sorted(v.items()))) for k, v in merged_dict.items()).items()))
         {'a': {1: 1, 2: 2, 3: 3}, 'b': {10: 10}, 'c': {100: 100}}
         """
-        return dict((section, dict((*list(default_dict.get(section, {}).items()), *list(main_dict.get(section, {}).items()))))
+        # return dict((section, dict((*list(default_dict.get(section, {}).items()), *list(main_dict.get(section, {}).items()))))
+        #             for section in set(main_dict) | set(default_dict))
+        return dict((section, default_dict.get(section, {}) | main_dict.get(section, {}))  # https://www.python.org/dev/peps/pep-0584/ dict union in python version 3.9
                     for section in set(main_dict) | set(default_dict))
 
     @classmethod
@@ -199,6 +199,8 @@ class App:
     @classmethod
     def init(cls, config_path: str) -> None:
         """Initialize application properties (App.logger, App.cfg) by resolving config settings."""
+        if sys.version_info < cls.REQUIRED_PYTHON_VER:
+            raise RuntimeError(f"This package requres Python {cls.REQUIRED_PYTHON_VER}+")
         config = cls.load_config(cls.resolve_path(config_path))
         config = cls.merge_config(config, cls.__default_config)
         cls.setup_logging(config['Logging'])
