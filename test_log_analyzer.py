@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """Unit tests for loag_analyzer.py"""
 
@@ -31,7 +32,7 @@ class TestMainCode(unittest.TestCase):
     def test_main(self):
         """Test main"""
         la.App.init("tests/log_test.ini")
-        self.assertTrue(la.main(la.App.cfg) >= 0, "Main functionality is failed.")
+        self.assertTrue(la.main(la.App) >= 0, "Main functionality is failed.")
 
 
 if __name__ == '__main__':
