@@ -218,12 +218,12 @@ class App:
         return version.split(".")[:-1] == cls.__default_config['App']['VERSION'].split(".")[:-1]
 
 
-def main(cfg) -> int:
+def main(app=App) -> int:
     """
     main
 
     Args:
-        cfg (AppConfig): "read-only" (through namedtype) access to config settings
+        App: application settings class
 
     Returns:
         -1 (or Exception raised) - smt unexpected
@@ -231,6 +231,7 @@ def main(cfg) -> int:
         1 - no logs
         2 - report exists
     """
+    cfg = app.cfg
     FileInfo = cs.namedtuple("FileInfo", ['path', 'cdt', 'ext'])
     RequestInfo = cs.namedtuple("RequestInfo", ['uri', 'time'])
 
@@ -248,7 +249,7 @@ def main(cfg) -> int:
 #                     key = lambda s: datetime.strptime(wosuffixes(s.name[len(config['Logs']["FILE_PREFIX"]):]), config['Logs']['FILE_DATE_FORMAT']).date(),
 #                     reverse=True)):
         file_info = FileInfo(None, datetime.min, None)
-        for file_path in Path(App.resolve_path(log_cfg.DIR)).iterdir():
+        for file_path in Path(app.resolve_path(log_cfg.DIR)).iterdir():
             if file_path.is_file() and (file_path.name.startswith(log_cfg.FILE_NAME_PREFIX) if log_cfg.FILE_NAME_PREFIX else True):
                 ext = ".".join(file_path.name[len(log_cfg.FILE_NAME_PREFIX):].split('.')[log_cfg.FILE_NAME_DATE_FORMAT.count(".")+1:])
                 cdt = file_path.name.lstrip(log_cfg.FILE_NAME_PREFIX).rstrip(f'.{ext}')
@@ -277,11 +278,11 @@ def main(cfg) -> int:
         Returns:
             Path: valid path for report file
         """
-        report_path = App.resolve_path(report_cfg.DIR)
+        report_path = app.resolve_path(report_cfg.DIR)
         report_path.mkdir(parents=True, exist_ok=True)
         return report_path.joinpath(f'{report_cfg.FILE_NAME_PREFIX}{log_file_info.cdt.strftime(report_cfg.FILE_NAME_DATE_FORMAT)}{report_cfg.FILE_NAME_EXT if report_cfg.FILE_NAME_EXT else Path(report_cfg.TEMPLATE_FILE_PATH).suffix}')
 
-    def log_lines(log_file_info: FileInfo, mode='rt', encoding=App.ENCONDING) -> str:
+    def log_lines(log_file_info: FileInfo, mode='rt', encoding=app.ENCONDING) -> str:
         """Return generator of [log_file_info.path] file lines."""
         with {'gz': gzip.open, 'bz2': bz2.open}.get(log_file_info.ext, open)(str(log_file_info.path), mode, encoding=encoding) as log:
             for line in log:
@@ -297,16 +298,16 @@ def main(cfg) -> int:
     # process actual log file info
     log_file_info = actual_log_info(cfg.Logs)
     if not log_file_info:
-        App.logger.info(f'There are no log files in log directory {cfg.Logs.DIR} with specified prefix {cfg.Logs.FILE_NAME_PREFIX} and dt format {cfg.Logs.FILE_NAME_DATE_FORMAT}.')
+        app.logger.info(f'There are no log files in log directory {cfg.Logs.DIR} with specified prefix {cfg.Logs.FILE_NAME_PREFIX} and dt format {cfg.Logs.FILE_NAME_DATE_FORMAT}.')
         return 1
-    App.logger.debug(log_file_info)
+    app.logger.debug(log_file_info)
 
     # check report file for existence
     report_file_path = generate_report_file_name(cfg.Report, log_file_info)
     if report_file_path.exists():
-        App.logger.info(f'Report file [{report_file_path}] has been already created earlier.')
+        app.logger.info(f'Report file [{report_file_path}] has been already created earlier.')
         return 2
-    App.logger.debug(report_file_path)
+    app.logger.debug(report_file_path)
 
     # parse logs
     log_line_count = 0
@@ -323,9 +324,9 @@ def main(cfg) -> int:
         else:
             mismatched_line_numbers.append(log_line_count)
     if mismatched_line_numbers:
-        App.logger.debug(f'Mismatched line numbers in log file {log_file_info.path}:\n{" ".join(map(str,mismatched_line_numbers))}')
+        app.logger.debug(f'Mismatched line numbers in log file {log_file_info.path}:\n{" ".join(map(str,mismatched_line_numbers))}')
     if cfg.Logs.UNMATCHED_LINE_LIMIT and (float(cfg.Logs.UNMATCHED_LINE_LIMIT) < len(mismatched_line_numbers) / log_line_count):
-        App.logger.error(f'Mismatch limit has been exceeded. Parsing errors count = {len(mismatched_line_numbers)}.')
+        app.logger.error(f'Mismatch limit has been exceeded. Parsing errors count = {len(mismatched_line_numbers)}.')
         return -1
 
     # prepare parsed logs statistics
@@ -335,12 +336,12 @@ def main(cfg) -> int:
         times_count = len(times)
         list_requests.append({
             'count': times_count,   # count - сколько раз встречается URL, абсолютное значение
-            'time_sum': round(times_sum, App.ROUND_NDIGITS),  # time_sum - суммарный $request_time для данного URL'а, абсолютное значение
-            'count_perc': round(100 * times_count / (log_line_count - len(mismatched_line_numbers)), App.ROUND_NDIGITS),    # count_perc - сколько раз встречается URL, в процентнах относительно общего числа запросов
-            'time_perc': round(100 * times_sum / total_request_time, App.ROUND_NDIGITS),    # time_perc - суммарный $request_time для данного URL'а, в процентах относительно общего $request_time всех запросов
-            'time_avg': round(times_sum / times_count, App.ROUND_NDIGITS),    # time_avg - средний $request_time для данного URL'а
+            'time_sum': round(times_sum, app.ROUND_NDIGITS),  # time_sum - суммарный $request_time для данного URL'а, абсолютное значение
+            'count_perc': round(100 * times_count / (log_line_count - len(mismatched_line_numbers)), app.ROUND_NDIGITS),    # count_perc - сколько раз встречается URL, в процентнах относительно общего числа запросов
+            'time_perc': round(100 * times_sum / total_request_time, app.ROUND_NDIGITS),    # time_perc - суммарный $request_time для данного URL'а, в процентах относительно общего $request_time всех запросов
+            'time_avg': round(times_sum / times_count, app.ROUND_NDIGITS),    # time_avg - средний $request_time для данного URL'а
             'time_max': max(times),  # time_max - максимальный $request_time для данного URL'а
-            'time_med': round(median(times), App.ROUND_NDIGITS),  # time_med - медиана $request_time для данного URL'а
+            'time_med': round(median(times), app.ROUND_NDIGITS),  # time_med - медиана $request_time для данного URL'а
             'url': url,
             })
 
@@ -349,15 +350,15 @@ def main(cfg) -> int:
 
     # open report template and read content
     report_content = ""
-    with open(cfg.Report.TEMPLATE_FILE_PATH, 'rt', encoding=App.ENCONDING) as report_template_file:
+    with open(cfg.Report.TEMPLATE_FILE_PATH, 'rt', encoding=app.ENCONDING) as report_template_file:
         report_content = report_template_file.read()
     report_content = Template(report_content).safe_substitute(table_json=json.dumps(list_requests))
 
     # save fullfilled template content to report file
-    with open(report_file_path, 'wt', encoding=App.ENCONDING) as report_file:
+    with open(report_file_path, 'wt', encoding=app.ENCONDING) as report_file:
         report_file.write(report_content)
 
-    App.logger.info(f'Report has been successfully created and saved to file: {str(report_file_path)}')
+    app.logger.info(f'Report has been successfully created and saved to file: {str(report_file_path)}')
     return 0
 
 
@@ -372,7 +373,7 @@ if __name__ == "__main__":
             doctest.testmod(optionflags=doctest.NORMALIZE_WHITESPACE)
         else:
             App.init(args["--config"])
-            main(App.cfg)
+            main(App)
     except DocoptExit as exc:
         App.logger.error(f'Not a valid usage pattern.\n{__doc__}')
     except BaseException:   # do not use bare 'except' - pycodestyle(E722)
